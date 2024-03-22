@@ -1,1 +1,60 @@
-
+pipeline {
+    agent any
+    parameters {
+        string(name: 'BRANCH_NAME', defaultValue: 'Dev/Fe', description: 'Specify the branch name to deploy')
+    }
+    stages {
+        stage("GIT checkout") {
+            steps {
+                script {
+                    // Checkout the specified branch
+                    def branchName = params.BRANCH_NAME
+                    checkout([$class: 'GitSCM', branches: [[name: branchName]], userRemoteConfigs: [[url: 'https://github.com/singhrajrohit/simple-ecommerce-website-java.git']]])
+                }
+            }
+        }
+        stage("Build") {
+            steps {
+                sh "mvn clean package"
+                sh "mv target/Project1.war target/simple-ecommerce-website-java.git"
+            }
+        }
+        stage("Deploy to Fe/dev") {
+            when {
+                expression { params.BRANCH_NAME == 'Dev/Fe' }
+            }
+            steps {
+                deployToTomcat('43.205.230.251', 'tomcat', 'tomcat', 'http://43.205.230.251:8080/manager/text', '/simple-ecommerce-website-java', 'Dev')
+            }
+        }
+        stage("Deploy to QA/Test") {
+            when {
+                expression { params.BRANCH_NAME == 'Test' }
+            }
+            steps {
+                deployToTomcat('13.233.237.111', 'tomcat', 'tomcat', 'http://13.233.237.111:8080/manager/text', '/simple-ecommerce-website-java', 'Test')
+            }
+        }
+        stage("Deploy to Prod") {
+            when {
+                expression { params.BRANCH_NAME == 'master' }
+            }
+            steps {
+                input(message: "Do you want to proceed to PROD?", ok: "Proceed") // Approval step
+                // Deploy to PROD server after approval
+                deployToTomcat('13.233.109.226', 'tomcat', 'tomcat', 'http://13.233.109.226:8080/manager/text', '/simple-ecommerce-website-java', 'Prod')
+                
+                // Send Slack notification
+                slackSend(channel: '8pm-devops-batch', message: "Deployment to PROD has been approved by senior engineer.")
+            }
+        }
+    }
+}
+def deployToTomcat(tomcatIP, username, password, tomcatURL, contextPath, environment) {
+    def warFileName = 'target/simple-ecommerce-website-java.git'
+    // Deploy the WAR file using curl
+    sh """
+        curl -v -u ${username}:${password} --upload-file ${warFileName} ${tomcatURL}/deploy?path=${contextPath}&update=true
+    """
+    echo "Deployment to ${environment} server completed."
+}
