@@ -21,7 +21,7 @@ pipeline {
         }
         stage("Deploy to Fe/dev") {
             when {
-                expression { params.BRANCH_NAME == 'Dev/Fe' }
+                expression { params.BRANCH_NAME == 'Fe/Dev' }
             }
             steps {
                 deployToTomcat('43.205.230.251', 'tomcat', 'tomcat', 'http://43.205.230.251:8080/manager/text', '/simple-ecommerce-website-java', 'Dev')
@@ -29,7 +29,7 @@ pipeline {
         }
         stage("Deploy to QA/Test") {
             when {
-                expression { params.BRANCH_NAME == 'Test' }
+                expression { params.BRANCH_NAME == 'QA/Test' }
             }
             steps {
                 deployToTomcat('13.233.237.111', 'tomcat', 'tomcat', 'http://13.233.237.111:8080/manager/text', '/simple-ecommerce-website-java', 'Test')
